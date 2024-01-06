@@ -57,8 +57,10 @@ public class CalculateAverage_viniciusfcf {
 
         long[] pages = definePages(path, bufferCapacity, numPartitions);
         System.out.println("PAGES: " + Arrays.toString(pages));
-        long currentPosition = 0;
+        // long currentPosition = 0;
         // for (long page : pages) {
+        // // System.out.println("PAGE: " + page);
+        // // System.out.println("currentPosition: " + currentPosition);
         // try (SeekableByteChannel ch = java.nio.file.Files.newByteChannel(path, StandardOpenOption.READ)
         // .position(currentPosition)) {
         // ByteBuffer bf = ByteBuffer.allocate((int) page);
@@ -155,9 +157,10 @@ public class CalculateAverage_viniciusfcf {
         long pagesSum = 0;
         long fileSize = 0;
         for (int i = 0; i < numPages - 1; i++) {
+            System.out.println("----------------------------");
             System.out.println("pagesSum: " + pagesSum);
             try (SeekableByteChannel ch = Files.newByteChannel(path, StandardOpenOption.READ)
-                    .position(pagesSum)) {
+                    .position(pagesSum + bufferCapacity - MAX_ROW_SIZE)) {
                 if (i == 0) {
                     fileSize = ch.size();
                 }
@@ -166,19 +169,20 @@ public class CalculateAverage_viniciusfcf {
                 // System.out.println(new String(bf.array()));
                 byte[] bfArray = bf.array();
                 for (int j = bfArray.length - 1; j >= 0; j--) {
-                    // System.out.println((char) bfArray[j]);
+                    // System.out.println("<" + (char) bfArray[j] + ">");
                     if (bfArray[j] == '\n') {
-                        System.out.println("ACHOU \\n: " + pagesSum);
-                        System.out.println("ACHOU \\n: " + j);
-                        System.out.println("ACHOU \\n: " + bfArray.length);
+                        // System.out.println("ACHOU pagesSum\\n: " + pagesSum);
+                        // System.out.println("ACHOU j\\n: " + j);
+                        // System.out.println("ACHOU bfArray.length\\n: " + bfArray.length);
                         pages[i] = bufferCapacity - (MAX_ROW_SIZE - j);
                         pagesSum += pages[i];
-                        System.out.println("ACHOU page: " + pages[i]);
-                        System.out.println("ACHOU proxima pagesSum: " + pagesSum);
+                        // System.out.println("ACHOU page: " + pages[i]);
+                        // System.out.println("ACHOU proxima pagesSum: " + pagesSum);
 
                         break;
                     }
                 }
+                System.out.println("----------------------------");
 
             }
 
