@@ -15,7 +15,6 @@
 #  limitations under the License.
 #
 
-sdk use java 21.0.1-graalce
-JAVA_OPTS="-XX:+UseG1GC -XX:+UseStringDeduplication"
+JAVA_OPTS="--enable-preview -XX:+UseG1GC -XX:+UseStringDeduplication -Xmx32G -XX:MaxMetaspaceSize=512M"
 # JAVA_OPTS="-XX:+UseZGC"
-time java $JAVA_OPTS --class-path target/average-1.0.0-SNAPSHOT.jar dev.morling.onebrc.CalculateAverage_viniciusfcf measurements.txt 16
+time java $JAVA_OPTS --class-path target/average-1.0.0-SNAPSHOT.jar dev.morling.onebrc.CalculateAverage_viniciusfcf measurements.txt_bck 20

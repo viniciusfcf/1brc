@@ -18,17 +18,16 @@ package dev.morling.onebrc;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.channels.SeekableByteChannel;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.Arrays;
 import java.util.TreeMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 // using 21.0.1-tem Mac 2,6 GHz Intel Core i7 6-Core
 // gunnar morling - 3:38
-// ebarlas        - 21.0.1-tem=1:15 21.0.1-graalce: 0:54
 // viniciusfcf    - 21.0.1-tem=1:13 21.0.1-graalce: 0:47
 
 public class CalculateAverage_viniciusfcf {
@@ -44,34 +43,149 @@ public class CalculateAverage_viniciusfcf {
         var path = Paths.get(args[0]);
         var numPartitions = Integer.parseInt(args[1]);
         var channel = FileChannel.open(path, StandardOpenOption.READ);
-        var partitionSize = channel.size() / numPartitions;
-        var partitions = new Partition[numPartitions];
-        try (ExecutorService fixedThreadPool = Executors.newFixedThreadPool(numPartitions)) {
+        System.out.println("SIZE: " + channel.size());
+        // var partitionSize = channel.size() / numPartitions;
+        // var partitions = new Partition[numPartitions];
+        // var totalParaLer1 = channel.size() / 2;
+        // var totalParaLer2 = channel.size() - totalParaLer1;
+        // System.out.println("totalParaLer1 " + totalParaLer1);
+        int bufferCapacity = (int) (channel.size() / numPartitions);
+        System.out.println("bufferCapacity: " + bufferCapacity);
 
-            for (int i = 0; i < numPartitions; i++) {
-                var pIdx = i;
-                var pStart = pIdx * partitionSize;
-                var pEnd = pIdx == numPartitions - 1
-                        ? channel.size() // last partition might be slightly larger
-                        : pStart + partitionSize;
-                var pSize = pEnd - pStart;
-                Runnable r = () -> {
-                    try {
-                        var buffer = channel.map(FileChannel.MapMode.READ_ONLY, pStart, pSize);
-                        partitions[pIdx] = processBuffer(buffer, pIdx == 0);
+        long[] pages = definePages(path, bufferCapacity, numPartitions);
+        System.out.println("PAGES: " + Arrays.toString(pages));
+        long currentPosition = 0;
+        // for (long page : pages) {
+        // try (SeekableByteChannel ch = java.nio.file.Files.newByteChannel(path, StandardOpenOption.READ)
+        // .position(currentPosition)) {
+        // ByteBuffer bf = ByteBuffer.allocate((int) page);
+        // ch.read(bf);
+        // // System.out.println(new String(bf.array()));
+        // }
+        // currentPosition += page;
+        // // System.out.println("PROXIMA PAGINA!!");
+        // }
+
+        // try (SeekableByteChannel ch = java.nio.file.Files.newByteChannel(path,
+        // StandardOpenOption.READ)) {
+        // ByteBuffer bf = ByteBuffer.allocate(bufferCapacity);
+        // var lido = 0;
+        // while (totalParaLer1 > 0 && (lido = ch.read(bf)) > 0) {
+        // // System.out.println(new String(bf.array()));
+        // totalLido += lido;
+        // totalParaLer1 -= lido;
+        // bf.flip();
+        // // System.out.println(new String(bf.getarray()));
+        // if (totalParaLer1 < bufferCapacity && totalParaLer1 > 0) {
+        // // System.out.println("Recriando BF " + totalParaLer1);
+        // bf = ByteBuffer.allocate((int) totalParaLer1);
+        // }
+        // else {
+        // bf.clear();
+        // }
+
+        // }
+        // }
+        // System.out.println("totalParaLer1 " + totalParaLer1);
+        // System.out.println("TOTAL LIDO " + totalLido);
+
+        // System.out.println("totalParaLer2 " + totalParaLer2);
+        // try (SeekableByteChannel ch = java.nio.file.Files.newByteChannel(path,
+        // StandardOpenOption.READ)
+        // .position(channel.size() / 2)) {
+        // ByteBuffer bf = ByteBuffer.allocate(bufferCapacity);
+        // var lido = 0;
+        // while (totalParaLer2 > 0 && (lido = ch.read(bf)) > 0) {
+        // totalLido += lido;
+        // totalParaLer2 -= lido;
+        // bf.flip();
+        // // System.out.println(new String(bf.array()));
+        // if (totalParaLer2 < bufferCapacity && totalParaLer2 > 0) {
+        // // System.out.println("Recriando BF " + totalParaLer2);
+        // bf = ByteBuffer.allocate((int) totalParaLer2);
+        // }
+        // else {
+        // bf.clear();
+        // }
+
+        // }
+        // }
+        // System.out.println("totalParaLer2 " + totalParaLer1);
+
+        // System.out.println("TOTAL LIDO " + totalLido);
+
+        // try (ExecutorService fixedThreadPool =
+        // Executors.newFixedThreadPool(numPartitions)) {
+
+        // for (int i = 0; i < numPartitions; i++) {
+        // var pIdx = i;
+        // var pStart = pIdx * partitionSize;
+        // var pEnd = pIdx == numPartitions - 1
+        // ? channel.size() // last partition might be slightly larger
+        // : pStart + partitionSize;
+        // var pSize = pEnd - pStart;
+        // Runnable r = () -> {
+        // try {
+        // var buffer = channel.map(FileChannel.MapMode.READ_ONLY, pStart, pSize);
+        // partitions[pIdx] = processBuffer(buffer, pIdx == 0);
+        // }
+        // catch (IOException e) {
+        // throw new RuntimeException(e);
+        // }
+        // };
+        // fixedThreadPool.execute(r);
+        // }
+        // fixedThreadPool.awaitTermination(1, TimeUnit.MINUTES);
+
+        // foldFootersAndHeaders(partitions);
+        // printResults(foldStats(partitions));
+
+        // }
+
+    }
+
+    /*
+     * Cada elemento do array representa quantos bytes tem que ser lidos
+     */
+    private static long[] definePages(Path path, int bufferCapacity, int numPages) throws IOException {
+        long[] pages = new long[numPages];
+        long position = 0;
+        long fileSize = 0;
+        long pagesSum = 0;
+        for (int i = 0; i < numPages - 1; i++) {
+            try (SeekableByteChannel ch = java.nio.file.Files.newByteChannel(path, StandardOpenOption.READ)
+                    .position(position)) {
+                if (i == 0) {
+                    fileSize = ch.size();
+                }
+                ByteBuffer bf = ByteBuffer.allocate(bufferCapacity);
+                ch.read(bf);
+                // System.out.println(new String(bf.array()));
+                byte[] bfArray = bf.array();
+                for (int j = bfArray.length - 1; j >= 0; j--) {
+                    // System.out.println((char) bfArray[j]);
+                    if (bfArray[j] == '\n') {
+                        // System.out.println("ACHOU \\n: " + position);
+                        // System.out.println("ACHOU \\n: " + j);
+                        // System.out.println("ACHOU \\n: " + bfArray.length);
+                        pages[i] = bufferCapacity - (bfArray.length - j);
+                        pagesSum += pages[i];
+                        position = position + j;
+                        // System.out.println("ACHOU page: " + pages[i]);
+                        // System.out.println("ACHOU proxima posicao: " + position);
+
+                        break;
                     }
-                    catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                };
-                fixedThreadPool.execute(r);
+                }
+
             }
-            fixedThreadPool.awaitTermination(1, TimeUnit.MINUTES);
-
-            foldFootersAndHeaders(partitions);
-            printResults(foldStats(partitions));
 
         }
+        // System.out.println("fileSize: " + fileSize);
+        // System.out.println("pagesSum: " + pagesSum);
+        pages[numPages - 1] = fileSize - pagesSum;
+
+        return pages;
 
     }
 
@@ -194,7 +308,8 @@ public class CalculateAverage_viniciusfcf {
         return new Partition(header, footer, stats);
     }
 
-    private static byte[] readFooter(ByteBuffer buffer, int lineStart) { // read from line start to current pos (end-of-input)
+    private static byte[] readFooter(ByteBuffer buffer, int lineStart) { // read from line start to current pos
+                                                                         // (end-of-input)
         var footer = new byte[buffer.position() - lineStart];
         buffer.get(lineStart, footer, 0, footer.length);
         return footer;
@@ -211,7 +326,8 @@ public class CalculateAverage_viniciusfcf {
     record Partition(byte[] header, byte[] footer, Stats[] stats) {
     }
 
-    private static class Stats { // min, max, and sum values are modeled with integral types that represent tenths of a unit
+    private static class Stats { // min, max, and sum values are modeled with integral types that represent
+                                 // tenths of a unit
         final String strKey;
         int min = Integer.MAX_VALUE;
         int max = Integer.MIN_VALUE;
