@@ -57,19 +57,39 @@ public class CalculateAverage_viniciusfcf {
 
         long[] pages = definePages(path, bufferCapacity, numPartitions);
         System.out.println("PAGES: " + Arrays.toString(pages));
-        // long currentPosition = 0;
-        // for (long page : pages) {
-        // // System.out.println("PAGE: " + page);
-        // // System.out.println("currentPosition: " + currentPosition);
-        // try (SeekableByteChannel ch = java.nio.file.Files.newByteChannel(path, StandardOpenOption.READ)
-        // .position(currentPosition)) {
-        // ByteBuffer bf = ByteBuffer.allocate((int) page);
-        // ch.read(bf);
-        // // System.out.println(new String(bf.array()));
-        // }
-        // currentPosition += page;
-        // // System.out.println("PROXIMA PAGINA!!");
-        // }
+
+        final long[] currentPositions = new long[pages.length];
+        currentPositions[0] = 0;
+        for (int i = 1; i < pages.length; i++) {
+            currentPositions[i] = currentPositions[i - 1] + pages[i - 1];
+        }
+        System.out.println("currentPositions: " + Arrays.toString(currentPositions));
+
+        for (int i = 0; i < pages.length; i++) {
+            long page = pages[i];
+            long currentPosition = currentPositions[i];
+            // System.out.println("PAGE: " + page);
+            // System.out.println("currentPosition: " + currentPosition);
+            Runnable r = () -> {
+                try {
+
+                    try (SeekableByteChannel ch = Files.newByteChannel(path, StandardOpenOption.READ)
+                            .position(currentPosition)) {
+                        // System.out.println("currentPosition: " + currentPosition);
+                        // System.out.println("page: " + page);
+                        ByteBuffer bf = ByteBuffer.allocate((int) page);
+                        ch.read(bf);
+                        // System.out.println(new String(bf.array()));
+                    }
+                    System.out.println("PROXIMA PAGINA!!");
+                }
+                catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            };
+            new Thread(r).start();
+
+        }
 
         // try (SeekableByteChannel ch = java.nio.file.Files.newByteChannel(path,
         // StandardOpenOption.READ)) {
